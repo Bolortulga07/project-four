@@ -1,8 +1,10 @@
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
+import { Books } from "./models/Books";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { Authors } from "./models/Authors";
 
 dotenv.config();
 
@@ -15,85 +17,108 @@ const app = express();
 interface Book {
   title: string;
   author: string;
+  parentId: string;
+}
 
-  authorAndTitle: string;
+interface Author {
+  name: string;
+  age: number;
+  book: string;
 }
 
 const typeDefs = `
+
+  type Author {
+    id: ID!
+    name: String!
+    age: Int
+
+    authorBooks: [Book]
+  }
+
+  input AuthorInput {
+    name: String!  }
+
   type Book {
     title: String
-    author: String
+    author: [Author]
 
-    authorAndTitle: String
+    authorAndTitle: Author
   }
 
   type Query {
     books(title: String): [Book]
     book(title: String!): Book
+    authors(name: String!): [Author]
+    author(name: String!): Author
+    authorBooks(name: String!): [Book]
   }
 
-  type Mutation{
-    bookAdd(title: String!, author: String!): String
+  type Mutation {
+    bookAdd(title: String!, author: AuthorInput): String
     bookRemove(title: String!): String
-    bookUpdate(title: String!, newTitle: String! author: String): String
+    bookUpdate(title: String!, newTitle: String!, author: String): String
+
+    authorAdd(name: String!, age: Int): String
   }
 `;
 
-const books = [
-  {
-    title: "The Awakening",
-    author: "Kate Chopin",
-  },
-  {
-    title: "City of Glass",
-    author: "Paul Auster",
-  },
-];
-
 const resolvers = {
   Query: {
-    books: (_parent: null) => {
-      return;
+    books: async (_parent: null) => {
+      return await Books.find();
     },
-    book: (_parent: null, args: { title: string }) => {
-      return books.find((book) => book.title === args.title);
+    book: async (_parent: null, args: { title: string }) => {
+      return await Books.findOne(args);
     },
+
+    authors: async () => await Authors.find(),
+    author: async (_parent: any, args: { name: string }) =>
+      await Authors.findOne({ name: args.name }),
   },
 
   Mutation: {
-    bookAdd: (_parent: null, args: { title: string; author: string }) => {
-      const newBook = {
-        title: args.title,
-        author: args.author,
-        authorAndTitle: `${args.author} ${args.title}`,
-      };
-      books.push(newBook);
-      return "success";
+    bookAdd: async (_parent: null, args: { title: string; author: string }) => {
+      const newBook = new Books({ title: args.title, author: args.author });
+      await newBook.save();
+      return "Book added.";
     },
-    bookRemove: (_parent: null, args: { title: string }) => {
-      books.filter((book) => book.title !== args.title);
 
-      return "success";
+    bookRemove: async (_parent: null, args: { title: string }) => {
+      await Books.findOneAndDelete({ title: args.title });
+
+      return "Book removed.";
     },
-    bookUpdate: (
-      _parent: null,
-      args: { title: string; newTitle: string; author?: string }
+    bookUpdate: async (
+      _parent: any,
+      args: { title: string; newTitle?: string; author?: string }
     ) => {
-      const book = books.find((b) => b.title === args.title);
-      if (!book) return "Book not found";
-
-      book.title = args.newTitle;
-      if (args.author) {
-        book.author = args.author;
-      }
-
-      return "success";
+      await Books.findOneAndUpdate(
+        { title: args.title },
+        {
+          ...(args.newTitle && { title: args.newTitle }),
+          ...(args.author && { author: args.author }),
+        },
+        { new: true }
+      );
+      return "Book updated successfully!";
     },
+    authorAdd: async (_parent: any, args: { name: string; age?: number }) => {
+      const newAuthor = new Authors({ name: args.name, age: args.age });
+      await newAuthor.save();
+      return "Author added!";
+    },
+  },
 
-    Book: {
-      authorAndTitle: (parent: Book) => {
-        return `${parent.author} ${parent.title}`;
-      },
+  Book: {
+    authorAndTitle: async (parent: Book) => {
+      return await Authors.find({ name: { $in: parent.author } });
+    },
+  },
+
+  Author: {
+    authorBooks: async (parent: Author) => {
+      return await Books.find({ author: parent.name });
     },
   },
 };
@@ -103,23 +128,23 @@ const server = new ApolloServer({
   resolvers,
 });
 
-app.get("/books", (_req, res) => {
-  const newBooks = books.map((book: any) => {
-    book.authorAndTitle = `${book.author} ${book.title}`;
-    return book;
-  });
+// app.get("/books", (_req, res) => {
+//   const newBooks = books.map((book: any) => {
+//     book.authorAndTitle = `${book.author} ${book.title}`;
+//     return book;
+//   });
 
-  res.send(newBooks);
-});
+//   res.send(newBooks);
+// });
 
-app.get("/book", (_req, res) => {
-  const newBooks = books.map((book: any) => {
-    book.authorAndTitle = `${book.author} ${book.title}`;
-    return book;
-  });
+// app.get("/book", (_req, res) => {
+//   const newBooks = books.map((book: any) => {
+//     book.authorAndTitle = `${book.author} ${book.title}`;
+//     return book;
+//   });
 
-  res.send(newBooks[0]);
-});
+//   res.send(newBooks[0]);
+// });
 
 const startServer = async () => {
   await server.start();
