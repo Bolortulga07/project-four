@@ -62,8 +62,12 @@ const resolvers = {
 
   Mutation: {
     bookAdd: (_parent: null, args: { title: string; author: string }) => {
-      books.push(args);
-
+      const newBook = {
+        title: args.title,
+        author: args.author,
+        authorAndTitle: `${args.author} ${args.title}`,
+      };
+      books.push(newBook);
       return "success";
     },
     bookRemove: (_parent: null, args: { title: string }) => {
@@ -71,14 +75,25 @@ const resolvers = {
 
       return "success";
     },
-    bookUpdate: (_parent: null, args: { title: string }) => {
-      books; //not done yet.
-    },
-  },
+    bookUpdate: (
+      _parent: null,
+      args: { title: string; newTitle: string; author?: string }
+    ) => {
+      const book = books.find((b) => b.title === args.title);
+      if (!book) return "Book not found";
 
-  Book: {
-    authorAndTitle: (parent: Book) => {
-      return `${parent.author} ${parent.title}`;
+      book.title = args.newTitle;
+      if (args.author) {
+        book.author = args.author;
+      }
+
+      return "success";
+    },
+
+    Book: {
+      authorAndTitle: (parent: Book) => {
+        return `${parent.author} ${parent.title}`;
+      },
     },
   },
 };
@@ -111,9 +126,8 @@ const startServer = async () => {
 
   app.use("/graphql", express.json(), expressMiddleware(server));
 
-  const PORT = process.env.PORT || 3000;
-  app.listen(3000, () => {
-    console.log(`Server is running on http://localhost:${PORT}/graphql`);
+  app.listen(4000, () => {
+    console.log("server started on 4000");
   });
 };
 
