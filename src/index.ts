@@ -1,6 +1,8 @@
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
+import jwt from "jsonwebtoken";
 import { Books } from "./models/Books";
+import { Context } from "./utils/@types";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -91,7 +93,7 @@ const resolvers = {
   },
 };
 
-const server = new ApolloServer({
+const server = new ApolloServer<Context>({
   typeDefs,
   resolvers,
 });
@@ -99,7 +101,27 @@ const server = new ApolloServer({
 const startServer = async () => {
   await server.start();
 
-  app.use("/graphql", express.json(), expressMiddleware(server));
+  app.use(
+    "/graphql",
+    express.json(),
+    expressMiddleware(server, {
+      context: async ({ req, res }) => {
+        const token = req.headers.authorization;
+
+        if (token) {
+          try {
+            const tokendata = jwt.verify(token, "secret") as any;
+
+            return { user: tokendata?.user };
+          } catch {
+            return { user: null };
+          }
+        }
+
+        return { user: null };
+      },
+    })
+  );
 
   app.listen(4000, () => {
     console.log("server started on 4000");
