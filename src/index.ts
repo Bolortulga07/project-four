@@ -5,6 +5,10 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { Authors } from "./models/Authors";
+import { bookQueries } from "./modules/book/graphql/queries";
+import { authorQueries } from "./modules/author/graphql/queries";
+import { bookMutations } from "./modules/book/graphql/mutations";
+import { authorsMutations } from "./modules/author/graphql/mutations";
 
 dotenv.config();
 
@@ -65,49 +69,13 @@ const typeDefs = `
 
 const resolvers = {
   Query: {
-    books: async (_parent: null) => {
-      return await Books.find();
-    },
-    book: async (_parent: null, args: { title: string }) => {
-      return await Books.findOne(args);
-    },
-
-    authors: async () => await Authors.find(),
-    author: async (_parent: any, args: { name: string }) =>
-      await Authors.findOne({ name: args.name }),
+    ...bookQueries,
+    ...authorQueries,
   },
 
   Mutation: {
-    bookAdd: async (_parent: null, args: { title: string; author: string }) => {
-      const newBook = new Books({ title: args.title, author: args.author });
-      await newBook.save();
-      return "Book added.";
-    },
-
-    bookRemove: async (_parent: null, args: { title: string }) => {
-      await Books.findOneAndDelete({ title: args.title });
-
-      return "Book removed.";
-    },
-    bookUpdate: async (
-      _parent: any,
-      args: { title: string; newTitle?: string; author?: string }
-    ) => {
-      await Books.findOneAndUpdate(
-        { title: args.title },
-        {
-          ...(args.newTitle && { title: args.newTitle }),
-          ...(args.author && { author: args.author }),
-        },
-        { new: true }
-      );
-      return "Book updated successfully!";
-    },
-    authorAdd: async (_parent: any, args: { name: string; age?: number }) => {
-      const newAuthor = new Authors({ name: args.name, age: args.age });
-      await newAuthor.save();
-      return "Author added!";
-    },
+    ...bookMutations,
+    ...authorsMutations,
   },
 
   Book: {
@@ -127,24 +95,6 @@ const server = new ApolloServer({
   typeDefs,
   resolvers,
 });
-
-// app.get("/books", (_req, res) => {
-//   const newBooks = books.map((book: any) => {
-//     book.authorAndTitle = `${book.author} ${book.title}`;
-//     return book;
-//   });
-
-//   res.send(newBooks);
-// });
-
-// app.get("/book", (_req, res) => {
-//   const newBooks = books.map((book: any) => {
-//     book.authorAndTitle = `${book.author} ${book.title}`;
-//     return book;
-//   });
-
-//   res.send(newBooks[0]);
-// });
 
 const startServer = async () => {
   await server.start();
