@@ -2,7 +2,7 @@ import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import jwt from "jsonwebtoken";
 import { Books } from "./models/Books";
-import { Context } from "./utils/@types";
+import { Context, User } from "./utils/@types";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -11,6 +11,9 @@ import { bookQueries } from "./modules/book/graphql/queries";
 import { authorQueries } from "./modules/author/graphql/queries";
 import { bookMutations } from "./modules/book/graphql/mutations";
 import { authorsMutations } from "./modules/author/graphql/mutations";
+import { userMutations } from "./modules/auth/graphql/mutations";
+import { userSchemaTypes } from "./modules/auth/graphql/schema";
+import { userSchemaMutations } from "./modules/auth/graphql/schema";
 
 dotenv.config();
 
@@ -42,9 +45,6 @@ const typeDefs = `
     authorBooks: [Book]
   }
 
-  input AuthorInput {
-    name: String!  }
-
   type Book {
     title: String
     author: [Author]
@@ -61,11 +61,12 @@ const typeDefs = `
   }
 
   type Mutation {
-    bookAdd(title: String!, author: AuthorInput): String
+    bookAdd(title: String!, author: [String]): String
     bookRemove(title: String!): String
-    bookUpdate(title: String!, newTitle: String!, author: String): String
+    bookUpdate(title: String!, newTitle: String!, author: [String]): String
 
     authorAdd(name: String!, age: Int): String
+    ${userSchemaMutations}
   }
 `;
 
@@ -78,6 +79,7 @@ const resolvers = {
   Mutation: {
     ...bookMutations,
     ...authorsMutations,
+    ...userMutations,
   },
 
   Book: {
@@ -107,12 +109,12 @@ const startServer = async () => {
     expressMiddleware(server, {
       context: async ({ req, res }) => {
         const token = req.headers.authorization;
-
         if (token) {
+          console.log("token", token);
           try {
-            const tokendata = jwt.verify(token, "secret") as any;
-
-            return { user: tokendata?.user };
+            const tokendata = jwt.verify(token, "123") as User;
+            console.log("tokendata", tokendata);
+            return { user: tokendata };
           } catch {
             return { user: null };
           }

@@ -13,7 +13,7 @@ export const bookSchemaQueries = `
  `;
 
 export const bookSchemaMutations = `
-     bookAdd(title: String!, author: String!): String
+     bookAdd(title: String!, author: [String]!): String
      bookRemove(title: String!): String
      bookSchemaUpdate(title: String!): String
  `;

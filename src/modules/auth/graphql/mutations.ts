@@ -5,7 +5,7 @@ export const userMutations = {
     _parent: undefined,
     { username, password }: { username: string; password: string }
   ) => {
-    const token = jwt.sign({ user: { firstName: "bat" } }, "secret");
+    const token = jwt.sign({ user: { firstName: "bat" } }, "123");
 
     return token;
   },
